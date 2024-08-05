@@ -26,15 +26,19 @@ plotByRegion <- function(region,data,year,substance){
                                  Females=femalex$Deaths),
   )
   
-  row.names(matrix) <- c('On the death certificate',
-                         'Without other drugs',
-                         'With alcohol',
-                         'Without alcohol')
+  row.names(matrix) <- c('On the death \n certificate',
+                         'Without \n other drugs',
+                         'With \n alcohol',
+                         'Without \n alcohol')
   
   plot <- barplot(t(matrix),
                   col=colors()[c(11,23)],
                   beside = TRUE,
                   ylab = "Deaths",
+                  cex.lab = 1,
+                  cex.axis = 1,
+                  cex = 0.9,
+                  las = 1,
                   main = paste0('Number of deaths due to ',substance,', \n ',region,', deaths registered in ',year))
   zlegend <- legend("topright",
                     legend = c('male','female'),
@@ -56,7 +60,13 @@ plotTimeseries <- function(sex,region,substance,data){
     geom_line() +
     xlab("Year") + 
     ylab("Deaths") +
-    labs(color = "Mentioned")
+    labs(color = "Mentioned") +
+    ggtitle(paste0('Number of deaths due to ',substance,', \n ',region,' - ',sex)) +
+    theme(plot.title = element_text(size=18)) +
+    theme(legend.title = element_text(size=16)) +
+    theme(legend.text = element_text(size=14)) +
+    theme(legend.position="top")
+  
   
   # plot <- plot(
   #   deathCert$Year.of.death.registration,
@@ -217,11 +227,40 @@ ui <- fluidPage(
                      plotOutput("plot3")
           ),
           tabPanel("Totals Deaths by Region",
-                   plotOutput('englandAndWales'),
-                   plotOutput("england"),
-                   plotOutput("wales")),
+                   fluidRow(
+                     column(6,
+                            plotOutput('englandAndWales')
+                            ),
+                     column(6,
+                            plotOutput('england')
+                            )
+                   ),
+                   fluidRow(
+                     column(6,
+                            plotOutput('wales')
+                            ),
+                     column(6,
+                            plotOutput('london'))
+                   ),
+                   fluidRow(
+                     column(6,
+                            plotOutput('northeast')
+                     ),
+                     column(6,
+                            plotOutput('northwest'))
+                   ),
+                   fluidRow(
+                     column(6,
+                            plotOutput('yorkshire')
+                     ),
+                     column(6,
+                            plotOutput('eastmidlands'))
+                   )
+          ),
           tabPanel("Time Series",
-                   plotOutput('timePlot'))
+                   plotOutput('timePlot')),
+          tabPanel("All Data",
+                   dataTableOutput("allData"))
                    
         ) #tabset panel end
         ) #main panel end
@@ -347,8 +386,37 @@ server <- function(input, output) {
         plot <- plotByRegion('Wales',xdata,input$year,input$substance)
         plot
       })
+      #London
+      output$london <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('London',xdata,input$year,input$substance)
+        plot
+      })
+      #North East
+      output$northeast <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('North East',xdata,input$year,input$substance)
+        plot
+      })
+      #North West
+      output$northwest <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('North West',xdata,input$year,input$substance)
+        plot
+      })
+      #Yorkshire
+      output$yorkshire <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('Yorkshire and The Humber',xdata,input$year,input$substance)
+        plot
+      })
+      #East Midlands
+      output$eastmidlands <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('East Midlands',xdata,input$year,input$substance)
+        plot
+      })
   })
-  
   
   #### time series ####
   listen2 <- reactive({
@@ -365,6 +433,9 @@ server <- function(input, output) {
     
   })
   
+  output$allData <- renderDT({
+    allData
+  })
     
 }
 
