@@ -8,9 +8,40 @@
 
 #Number of drug-related poisonings by selected substances, England and Wales, deaths registered between 1993 and 2022",,,,,,
 
+#### library ####
 library(shiny)
 library(shinythemes)
 library(wesanderson)
+
+#### functions ####
+plotByRegion <- function(region,data,year,substance){
+  xdata <- data[data$Usual.residence.name == region,]
+  male.death <- xdata[xdata$Sex == 'Males',]
+  female.death <- xdata[xdata$Sex == "Females",]
+  malex <- male.death[male.death$Substance == substance,]
+  femalex <- female.death[female.death$Substance == substance,]
+  
+  matrix <- as.matrix(data.frame(Males=malex$Deaths,
+                                 Females=femalex$Deaths),
+  )
+  
+  row.names(matrix) <- c('On the death certificate',
+                         'Without other drugs',
+                         'With alcohol',
+                         'Without alcohol')
+  
+  plot <- barplot(t(matrix),
+                  col=colors()[c(11,23)],
+                  beside = TRUE,
+                  ylab = "Deaths",
+                  main = paste0('Number of deaths due to ',substance,', \n ',region,', deaths registered in ',year))
+  zlegend <- legend("topright",
+                    legend = c('male','female'),
+                    fill = colours()[c(11,23)])
+  return(plot)
+}
+
+#### Data ####
 
 allData <- read.csv("data/2022substances.xlsx - All data.csv",
                     header = TRUE)
@@ -27,7 +58,6 @@ print(sexes)
 print(residence)
 print(substance)
 print(mentioned)
-
 
 #### UI ####
 ui <- fluidPage(
@@ -135,18 +165,28 @@ ui <- fluidPage(
                        "Show/Update",
                        width = 150)
           
-        ),
+        ), #sidbar end
 #### main panel ####
         mainPanel(
-          HTML("<h4>Number of drug-related poisonings by selected substances, England and Wales, deaths registered between 1993 and 2022</h4>"),
-          dataTableOutput("filtered"),
-          plotOutput("plot"),
-          hr(),
-          plotOutput("plot2"),
-          plotOutput("plot3")
+        tabsetPanel(
+          tabPanel("Comparison plots",
+                     HTML("<h4>Number of drug-related poisonings by selected substances, England and Wales, deaths registered between 1993 and 2022</h4>"),
+                     dataTableOutput("filtered"),
+                     plotOutput("plot"),
+                     hr(),
+                     plotOutput("plot2"),
+                     plotOutput("plot3")
+          ),
+          tabPanel("Totals Deaths by Region",
+                   plotOutput('englandAndWales'),
+                   plotOutput("england"),
+                   plotOutput("wales")),
+          tabPanel("Time Series",
+                   HTML("<h3>to do</3h3>"))
         )
-    )
-)
+        ) #main panel end
+    ) #sidebar layout end
+) #app end
 
 #### server ####
 server <- function(input, output) {
@@ -212,7 +252,8 @@ server <- function(input, output) {
     output$plot3 <- renderPlot({
       barplot(comp.matrix,
               #names.arg = row.names(comp.matrix),
-              col = c("red", "blue"),
+              col=colors()[c(23,77)], 
+              #col = c("red", "blue"),
               beside = TRUE,
               ylab = "Deaths")
       legend("topright",                                    
@@ -228,12 +269,38 @@ server <- function(input, output) {
                  input$residence2," | ",
                  input$substance2
                )),
-             fill = c("red", "blue"))
+             fill = colours()[c(23,77)])
     })
     
   })
     
+  ##individual plots
+  #england and wales
+  listen1 <- reactive({
+    list(input$year,input$substance)
+  })
   
+  observeEvent(listen1(),{
+    print(listen1())
+    
+      output$englandAndWales <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('England and Wales',xdata,input$year,input$substance)
+        plot
+      })
+      #England
+      output$england <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('England',xdata,input$year,input$substance)
+        plot
+      })
+      #wales
+      output$wales <- renderPlot({
+        xdata <- allData[allData$Year.of.death.registration == input$year,]
+        plot <- plotByRegion('Wales',xdata,input$year,input$substance)
+        plot
+      })
+  })
   
     
 }
