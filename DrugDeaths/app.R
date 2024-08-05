@@ -12,6 +12,7 @@
 library(shiny)
 library(shinythemes)
 library(wesanderson)
+library(ggplot2)
 
 #### functions ####
 plotByRegion <- function(region,data,year,substance){
@@ -38,6 +39,44 @@ plotByRegion <- function(region,data,year,substance){
   zlegend <- legend("topright",
                     legend = c('male','female'),
                     fill = colours()[c(11,23)])
+  return(plot)
+}
+
+plotTimeseries <- function(sex,region,substance,data){
+  xdata <- data[data$Usual.residence.name == region,]
+  xdata <- xdata[xdata$Sex == sex,]
+  xdata <- xdata[xdata$Substance == substance,]
+  
+  plot <- ggplot(
+    xdata[,c(1,7)],
+    aes(x=xdata$Year.of.death.registration,
+        y=xdata$Deaths,
+        group=xdata$Mentioned,
+        color=xdata$Mentioned)) +
+    geom_line() +
+    xlab("Year") + 
+    ylab("Deaths") +
+    labs(color = "Mentioned")
+  
+  # plot <- plot(
+  #   deathCert$Year.of.death.registration,
+  #   deathCert$Deaths,
+  #   type = 'p',
+  #   xlab = 'year',
+  #   ylab = 'deaths',
+  #   col=colors()[11],
+  #   main = paste0('Number of deaths due to ',substance,', \n ',region,' - ',sex)
+  # )
+  # lines(withAlcohol$Year.of.death.registration,
+  #       withAlcohol$Deaths,
+  #       pch = 18,
+  #       col = colors()[29],
+  #       type = "p",
+  #       lty = 2)
+  # legend("topleft",
+  #      legend = c('On the death certificate'),#,'With alcohol','Without alcohol','With other drugs'),
+  #      #fill = colours()[c(11,29,31,33)])
+  #      fill = colours()[11])
   return(plot)
 }
 
@@ -110,9 +149,9 @@ ui <- fluidPage(
             size = NULL
           ),
           
-          actionButton("update",
-                       "Show/Update",
-                       width = 150),
+          # actionButton("update",
+          #              "Show/Update",
+          #              width = 150),
           
           hr(),
           HTML("<h3>Comparison with...</h3>"),
@@ -182,8 +221,9 @@ ui <- fluidPage(
                    plotOutput("england"),
                    plotOutput("wales")),
           tabPanel("Time Series",
-                   HTML("<h3>to do</3h3>"))
-        )
+                   plotOutput('timePlot'))
+                   
+        ) #tabset panel end
         ) #main panel end
     ) #sidebar layout end
 ) #app end
@@ -191,8 +231,15 @@ ui <- fluidPage(
 #### server ####
 server <- function(input, output) {
 
+  listen0 <- reactive({
+    list(input$year,
+         input$sex,
+         input$residence,
+         input$substance)
+  })
     
-    observeEvent(input$update,{
+    #observeEvent(input$update,{
+    observeEvent(listen0(),{
       filteredData <- allData
       filteredData <- filteredData[filteredData$Year.of.death.registration==input$year,]
       filteredData <- filteredData[filteredData$Sex==input$sex,]
@@ -300,6 +347,22 @@ server <- function(input, output) {
         plot <- plotByRegion('Wales',xdata,input$year,input$substance)
         plot
       })
+  })
+  
+  
+  #### time series ####
+  listen2 <- reactive({
+    list(input$sex,input$residence,input$substance) 
+  })
+  
+  observeEvent(listen2(),{
+    print(listen2())
+    
+    output$timePlot <- renderPlot({
+      timeplot <- plotTimeseries(input$sex,input$residence,input$substance,allData)
+      timeplot
+    })
+    
   })
   
     
