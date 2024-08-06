@@ -46,6 +46,20 @@ plotByRegion <- function(region,data,year,substance){
   return(plot)
 }
 
+#main comparison plots using ggplot
+comparePlots <- function(year,sex,residence,substance,data){
+  
+  p <- ggplot(
+    data,
+    aes(x=Mentioned,
+        y=Deaths)) +
+    ggtitle(paste0("Number of drug-related poisonings by ",substance, "\n",residence,", deaths registered in ",year)) +
+    geom_bar(stat="identity", fill=colors()[c(57,38,27,11)]) +
+    theme(axis.title = element_text(size=14)) +
+    theme(axis.text = element_text(size=14))
+  return(p)
+}
+
 plotTimeseries <- function(sex,region,substance,data){
   xdata <- data[data$Usual.residence.name == region,]
   xdata <- xdata[xdata$Sex == sex,]
@@ -163,68 +177,33 @@ ui <- fluidPage(
           #              "Show/Update",
           #              width = 150),
           
-          hr(),
-          HTML("<h3>Comparison with...</h3>"),
-          
-          selectInput(
-            "year2",
-            "Year",
-            allYears,
-            selected = "2022",
-            multiple = FALSE,
-            selectize = TRUE,
-            width = NULL,
-            size = NULL
-          ),
-          
-          selectInput(
-            "sex2",
-            "Sex",
-            sexes,
-            selected = "Persons",
-            multiple = FALSE,
-            selectize = TRUE,
-            width = NULL,
-            size = NULL
-          ),
-          
-          selectInput(
-            "residence2",
-            "Residence",
-            residence,
-            selected = "England and Wales",
-            multiple = FALSE,
-            selectize = TRUE,
-            width = NULL,
-            size = NULL
-          ),
-          
-          selectInput(
-            "substance2",
-            "Substance",
-            substance,
-            selected = "01 All drug poisonings",
-            multiple = FALSE,
-            selectize = TRUE,
-            width = NULL,
-            size = NULL
-          ),
-          
-          actionButton("update2",
-                       "Show/Update",
-                       width = 150)
+          hr()
           
         ), #sidbar end
 #### main panel ####
         mainPanel(
         tabsetPanel(
           tabPanel("Comparison plots",
-                     HTML("<h4>Number of drug-related poisonings by selected substances, England and Wales, deaths registered between 1993 and 2022</h4>"),
-                     dataTableOutput("filtered"),
-                     plotOutput("plot"),
-                     hr(),
-                     plotOutput("plot2"),
-                     plotOutput("plot3")
+                   HTML("<h4>Number of drug-related poisonings by selected substances, England and Wales, deaths registered between 1993 and 2022</h4>"),
+                   dataTableOutput("filtered"),
+                   plotOutput("plot"),
+                   hr(),
+                   HTML("<h3>Comparison with...</h3>"),
+                   fluidRow(
+                     column(6,
+                            uiOutput("year2"),
+                            uiOutput("sex2")
+                            ),
+                     column(6,
+                            uiOutput("residence2"),
+                            uiOutput("substance2")
+                            )
+                   ),
+                   actionButton("update2",
+                                "Show/Update",
+                                width = 150),
+                   plotOutput("plot2"),
+                   plotOutput("plot3")
           ),
           tabPanel("Totals Deaths by Region",
                    fluidRow(
@@ -276,7 +255,62 @@ server <- function(input, output) {
          input$residence,
          input$substance)
   })
+  
+  #### comparison outputs ####
+  output$year2 <- renderUI({
+    selectInput(
+      "year2",
+      "Year",
+      allYears,
+      selected = "2022",
+      multiple = FALSE,
+      selectize = TRUE,
+      width = NULL,
+      size = NULL
+    )
+  })
+  
+  output$sex2 <- renderUI({
+    selectInput(
+      "sex2",
+      "Sex",
+      sexes,
+      selected = "Persons",
+      multiple = FALSE,
+      selectize = TRUE,
+      width = NULL,
+      size = NULL
+    )
+  })
+  
+  output$residence2 <- renderUI({
+    selectInput(
+      "residence2",
+      "Residence",
+      residence,
+      selected = "England and Wales",
+      multiple = FALSE,
+      selectize = TRUE,
+      width = NULL,
+      size = NULL
+    )
+  })
+  
+  output$substance2 <- renderUI({
+    selectInput(
+      "substance2",
+      "Substance",
+      substance,
+      selected = "01 All drug poisonings",
+      multiple = FALSE,
+      selectize = TRUE,
+      width = NULL,
+      size = NULL
+    )
+  })
+  
     
+  #### comparison plots ####
     #observeEvent(input$update,{
     observeEvent(listen0(),{
       filteredData <- allData
@@ -290,14 +324,21 @@ server <- function(input, output) {
       )
       
       output$plot <- renderPlot({
-        barplot(filteredData$Deaths,
-                names.arg = filteredData$Mentioned,
-                ylab = "Deaths",
-                col=wes_palette(4,
-                                type = "continuous"),
-                main = paste0("Number of drug-related poisonings by selected substances, \n",input$residence,", deaths registered in ",
-                              input$year)
-                )
+        year <- listen0()[[1]]
+        sex <- listen0()[[2]]
+        residence <- listen0()[[3]]
+        substance <- listen0()[[4]]
+        
+        barplot <- comparePlots(year,sex,residence,substance,filteredData)
+        barplot
+        # barplot(filteredData$Deaths,
+        #         names.arg = filteredData$Mentioned,
+        #         ylab = "Deaths",
+        #         col=wes_palette(4,
+        #                         type = "continuous"),
+        #         main = paste0("Number of drug-related poisonings by selected substances, \n",input$residence,", deaths registered in ",
+        #                       input$year)
+        #         )
       })
       
     })
@@ -318,14 +359,21 @@ server <- function(input, output) {
     filteredData2 <- filteredData2[filteredData2$Substance==input$substance2,]
     
     output$plot2 <- renderPlot({
-      barplot(filteredData2$Deaths,
-              names.arg = filteredData2$Mentioned,
-              ylab = "Deaths",
-              col=wes_palette(4,
-                              type = "continuous"),
-              main = paste0("Number of drug-related poisonings by selected substances, \n",input$residence2,", deaths registered in ",
-                            input$year2)
-      )
+      year <- input$year2
+      sex <- input$sex2
+      residence <- input$resicence2
+      substance <- input$substance2
+      
+      barplot <- comparePlots(year,sex,residence,substance,filteredData2)
+      barplot
+      # barplot(filteredData2$Deaths,
+      #         names.arg = filteredData2$Mentioned,
+      #         ylab = "Deaths",
+      #         col=wes_palette(4,
+      #                         type = "continuous"),
+      #         main = paste0("Number of drug-related poisonings by selected substances, \n",input$residence2,", deaths registered in ",
+      #                       input$year2)
+      # )
     })
     
     comp.matrix <- t(as.matrix(data.frame(A=filteredData$Deaths,
